@@ -21,7 +21,7 @@ function StackedAreaChart(container) {
 
 	const tooltip = svg.append("text").text("");
 
-	let timeScale = d3.scaleTime().rangeRound([0, 5.4]);
+	let timeScale = d3.scaleTime().range([0, width]);
 
 	let yScale = d3.scaleLinear().range([height, 0]);
 
@@ -31,20 +31,12 @@ function StackedAreaChart(container) {
 
 	svg.append("g").attr("class", "axis y-axis");
 
-	svg.select("text.axis-title").remove();
-
-	svg.append("text")
-		.attr("class", "axis-title")
-		.attr("x", 10)
-		.attr("y", -15)
-		.attr("dy", ".1em")
-		.style("text-anchor", "end");
-
 	function update(_data) {
 		data = _data; // -- (2)
 		const keys = selected ? [selected] : data.columns.slice(1);
-
-		timeScale.domain(xDomain ? xDomain : data.map((d) => d.date)); // -- (5)
+		let dates = data.map((d) => d.date);
+		let timeDomain = [dates[0], dates[dates.length - 1]];
+		timeScale.domain(xDomain ? xDomain : timeDomain); // -- (5)
 
 		let stack = d3
 			.stack()
@@ -53,6 +45,11 @@ function StackedAreaChart(container) {
 			.offset(d3.stackOffsetNone);
 
 		let colorScale = d3.scaleOrdinal(keys, colors);
+		let totals = d3.extent(data, function (i) {
+			return i.total;
+		});
+
+		totals = [0, totals[1]];
 
 		let area = d3
 			.area()
@@ -66,15 +63,6 @@ function StackedAreaChart(container) {
 				return yScale(d[1]);
 			});
 
-		let totals = d3.extent(data, function (i) {
-			console.log(i);
-			return i.total;
-		});
-
-		totals = [0, totals[1]];
-
-		console.log(data);
-
 		let series = stack(data); // Define scales
 
 		colorScale.domain(keys);
@@ -82,9 +70,7 @@ function StackedAreaChart(container) {
 
 		const areas = svg
 			.selectAll(".area")
-			.data(series, (d) => {
-				if (selected) return d.key;
-			})
+			.data(series, (d) => d.key)
 			.join("path")
 			.attr("fill", ({ index }) => colorScale(index))
 			.attr("d", area)
@@ -111,12 +97,11 @@ function StackedAreaChart(container) {
 
 		let yAxis = d3.axisLeft().scale(yScale);
 
-		svg.append("g")
-			.attr("class", "axis x-axis")
+		svg.select(".axis.x-axis")
 			.attr("transform", `translate(0, ${height})`)
 			.call(xAxis);
 
-		svg.append("g").attr("class", "axis y-axis").call(yAxis);
+		svg.select(".axis.y-axis").call(yAxis);
 		areas.exit().remove();
 	}
 

@@ -1,4 +1,4 @@
-// import * as d3 from "https://unpkg.com/d3?module";
+import * as d3 from "https://unpkg.com/d3?module";
 const margin = { top: 30, left: 40, bottom: 40, right: 20 };
 var width = 700 - margin.left - margin.right,
 	height = 500 - margin.top - margin.bottom;
@@ -24,13 +24,14 @@ function AreaChart(container) {
 
 	function brushed(event) {
 		if (event.selection) {
-			let selection = event.selection.map(xScale.invert); // or map(d=> xScale.invert(d))
+			let selection = []; // or map(d=> xScale.invert(d))
 		}
 	}
 
 	function end(event) {
 		if (event.selection) {
 			let selection = event.selection.map(xScale.invert); // or map(d=> xScale.invert(d))
+			listeners["brushed"](selection);
 		}
 	}
 
