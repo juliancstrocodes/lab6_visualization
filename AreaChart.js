@@ -1,13 +1,13 @@
 import * as d3 from "https://unpkg.com/d3?module";
 const margin = { top: 30, left: 40, bottom: 40, right: 20 };
 var width = 700 - margin.left - margin.right,
-	height = 500 - margin.top - margin.bottom;
-let colors = d3.schemeTableau10;
+	height = 150 - margin.top - margin.bottom;
 
 function AreaChart(container) {
-	const listeners = { brushed: null };
-
 	// initialization
+
+	// 	stroke: #646464;
+	//   stroke-width: 1px;
 	let svg = d3
 		.select(container)
 		.append("svg")
@@ -16,55 +16,50 @@ function AreaChart(container) {
 		.append("g")
 		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-	// const tooltip = svg.append("text").text("");
-
 	let xScale = d3.scaleTime().rangeRound([0, width]);
-
 	let yScale = d3.scaleLinear().range([height, 0]);
 
-	function brushed(event) {
-		if (event.selection) {
-			let selection = []; // or map(d=> xScale.invert(d))
-		}
-	}
+	svg.append("g").attr("class", "axis x-axis");
+	svg.append("g").attr("class", "axis y-axis");
 
-	function end(event) {
+	let xAxis = d3.axisBottom().scale(xScale).tickSizeOuter(0);
+	let defaultSelection = [
+		"2000-01-01T00:00:00.000Z",
+		"2010-02-01T00:00:00.000Z",
+	];
+
+	let yAxis = d3.axisLeft().scale(yScale).ticks(3);
+
+	function brushed(event) {
 		if (event.selection) {
 			let selection = event.selection.map(xScale.invert); // or map(d=> xScale.invert(d))
 			listeners["brushed"](selection);
 		}
 	}
-
-	let xAxis = d3.axisBottom().scale(xScale);
-	let yAxis = d3.axisLeft().scale(yScale);
-
 	const brush = d3
 		.brushX()
 		.extent([
 			[0, 0],
 			[width, height],
 		])
-		.on("end", end)
+		.on("end", brushend)
 		.on("brush", brushed);
+
+	function brushend(event) {
+		if (!event.selection) {
+			// svg.call(brush.move, defaultSelection);
+			const beg = new Date(defaultSelection[0]);
+			const end = new Date(defaultSelection[1]);
+
+			listeners["brushed"]([beg, end]);
+		}
+	}
+
+	let path = svg.append("path").attr("class", "area").attr("fill", "#f94932");
 
 	svg.append("g").attr("class", "brush").call(brush);
 
-	let path = svg.append("path");
-
-	svg.append("g")
-		.attr("class", "axis x-axis")
-		.attr("transform", `translate(0, ${height})`);
-
-	svg.append("g").attr("class", "axis y-axis");
-
-	svg.select("text.axis-title").remove();
-
-	svg.append("text")
-		.attr("class", "axis-title")
-		.attr("x", 10)
-		.attr("y", -15)
-		.attr("dy", ".1em")
-		.style("text-anchor", "end");
+	const listeners = { brushed: null };
 
 	function on(event, listener) {
 		listeners[event] = listener;
@@ -95,7 +90,10 @@ function AreaChart(container) {
 			.attr("transform", `translate(0, ${height})`)
 			.call(xAxis);
 
-		svg.append("g").attr("class", "axis y-axis").call(yAxis);
+		svg.append("g")
+			.attr("class", "axis y-axis")
+			.attr("transform", `translate(${width}), 0`)
+			.call(yAxis);
 		path.datum(data).attr("class", container).attr("d", area);
 	}
 	return {

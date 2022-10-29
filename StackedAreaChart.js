@@ -1,15 +1,11 @@
 import * as d3 from "https://unpkg.com/d3?module";
+
 const margin = { top: 30, left: 40, bottom: 40, right: 20 };
 var width = 700 - margin.left - margin.right,
 	height = 500 - margin.top - margin.bottom;
 let colors = d3.schemeTableau10;
 
 function StackedAreaChart(container) {
-	var xDomain, data;
-	var selected = null,
-		xDomain,
-		data;
-
 	// initialization
 	let svg = d3
 		.select(container)
@@ -19,21 +15,30 @@ function StackedAreaChart(container) {
 		.append("g")
 		.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-	const tooltip = svg.append("text").text("");
+	const timeScale = d3.scaleTime().rangeRound([0, width]);
+	const yScale = d3.scaleLinear().range([height, 0]);
 
-	let timeScale = d3.scaleTime().range([0, width]);
-
-	let yScale = d3.scaleLinear().range([height, 0]);
-
-	svg.append("g")
-		.attr("class", "axis x-axis")
-		.attr("transform", `translate(0, ${height})`);
-
-	svg.append("g").attr("class", "axis y-axis");
+	var xDomain, data;
+	var selected = null,
+		xDomain,
+		data;
 
 	function update(_data) {
+		svg.selectAll("*").remove();
+		svg.append("g")
+			.attr("class", "axis x-axis")
+			.attr("transform", `translate(0, ${height})`);
+
+		svg.append("g").attr("class", "axis y-axis");
+		let tooltip = svg
+			.append("text")
+			.text("")
+			.attr("x", "10px")
+			.attr("y", "10px");
+
 		data = _data; // -- (2)
 		const keys = selected ? [selected] : data.columns.slice(1);
+
 		let dates = data.map((d) => d.date);
 		let timeDomain = [dates[0], dates[dates.length - 1]];
 		timeScale.domain(xDomain ? xDomain : timeDomain); // -- (5)
@@ -46,6 +51,9 @@ function StackedAreaChart(container) {
 
 		let colorScale = d3.scaleOrdinal(keys, colors);
 		let totals = d3.extent(data, function (i) {
+			if (keys.length == 1) {
+				return i[keys[0]];
+			}
 			return i.total;
 		});
 
@@ -54,7 +62,20 @@ function StackedAreaChart(container) {
 		let area = d3
 			.area()
 			.x(function (d) {
-				return timeScale(d.data.date);
+				let time = timeScale(d.data.date);
+				if (!xDomain) {
+					return time;
+				} else {
+					if (time > width) {
+						return time - (time - width);
+					}
+
+					if (time >= 0) {
+						return time;
+					} else {
+						return 0;
+					}
+				}
 			})
 			.y0(function (d) {
 				return yScale(d[0]);
@@ -78,7 +99,9 @@ function StackedAreaChart(container) {
 			.text(({ index }) => keys[index]);
 
 		svg.selectAll("path")
-			.on("mouseover", (event, d, i) => tooltip.text(d.key))
+			.on("mouseover", (event, d, i) => {
+				tooltip.text(d.key);
+			})
 			.on("mouseout", (event, d, i) => tooltip.text(""))
 			.on("click", (event, d) => {
 				// toggle selected based on d.key
@@ -102,6 +125,7 @@ function StackedAreaChart(container) {
 			.call(xAxis);
 
 		svg.select(".axis.y-axis").call(yAxis);
+
 		areas.exit().remove();
 	}
 
